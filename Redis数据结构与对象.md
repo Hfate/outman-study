@@ -1,7 +1,9 @@
-##概述
+#概述
+    
     redis是一个开源的，由C语言编写的，非关系型内存数据库，其特点是高性能，常见应用场景是缓存；
     
-##数据结构
+#数据结构
+   
    ![avatar](https://outman-1252077993.cos.ap-nanjing.myqcloud.com/redis-data-structure-types.jpeg)
 
    ### 简单动态字符串
