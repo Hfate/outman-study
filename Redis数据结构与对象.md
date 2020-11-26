@@ -1,10 +1,13 @@
-#概述
+# 概述
     redis是一个开源的，由C语言编写的，非关系型内存数据库，其特点是高性能，常见应用场景是缓存；
     
-#数据结构
+# 数据结构
    ![avatar](https://outman-1252077993.cos.ap-nanjing.myqcloud.com/redis-data-structure-types.jpeg)
 
    ### 简单动态字符串
+   + **简介** 
+   
+        字符串是Redis中最为常见的数据存储类型，其底层实现是简单动态字符串sds(simple dynamic string)，是可以修改的字符串。
    + **定义**:每个sds.h/sdshdr结构表示一个SDS值
         ```
             struct sdshdr{
@@ -17,12 +20,12 @@
                 char buf[];
             }
         ```
-        + **示例**
-        
-            ![avatar](https://outman-1252077993.cos.ap-nanjing.myqcloud.com/1301290-20190420105230080-1708767435.png)
-            + free属性的值为5，表示空闲空间长度为5
-            + len的属性为5，表示这个SDS保存了一个五字节长的字符串
-            + buf属性是一个char类型的数组，数组的最后一个字节保存了空字符'\0',SDS遵循C字符的以空字符串结尾的惯例，这一字节空间不计算在len属性里
+   + **示例**
+   
+       ![avatar](https://outman-1252077993.cos.ap-nanjing.myqcloud.com/1301290-20190420105230080-1708767435.png)
+       + free属性的值为5，表示空闲空间长度为5
+       + len的属性为5，表示这个SDS保存了一个五字节长的字符串
+       + buf属性是一个char类型的数组，数组的最后一个字节保存了空字符'\0',SDS遵循C字符的以空字符串结尾的惯例，这一字节空间不计算在len属性里
             
    + SDS与C字符串的区别
    
