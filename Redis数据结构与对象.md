@@ -279,5 +279,81 @@
   | zlend | uint8_t | 1字节 |特殊值0xFF(十进制255),用于标记压缩列表的末端 |      
   
 ## 对象
+    
+    Redis并没有直接使用SDS，哈希表等底层数据结构来实现键值对数据库，而是基于这些数据结构创建了一个对象系统，
+    这个系统包含字符串对象，列表对象，哈希对象，集合对象和有序集合对象；在执行命令的时候，可以通过对象类型
+    判断是否可以执行特定的命令，并且可以针对对象设置多种不同的数据结构实现，得以优化不同场景下的使用效率。
+    除此之外，Redis的对象系统还实现了基于引用计数计数的内存回收机制，当程序不再使用某个对象时，这个对象会被释放；
+    同时，Redis还通过引用计数技术实现了对象共享机制，用以节约内存。
+    
                       
-                
++ 对象的类型与编码
+    
+      Redis使用对象来表示数据库中的键和值，每次当我们在Redis的数据库中新创建一个键值对时，我们至少会创建两个对象；
+   每个对象都由一个redisObject结构来表示，该结构中和保存数据有关的三个属性分别是type属性，encoding属性和pter属性
+   ```
+    typedef struct redisObject{
+        // 类型
+       unsigned type:4;
+       // 编码
+       unsigned encoding:4;
+       //指向底层实现数据结构的指针
+       void *ptr
+       //...
+    } robj;
+   ```
+  
+  
++ 类型
+
+  | 类型常量 | 对象的名称 |  
+  | :----| :---- |
+  | REDIS_STRING| 字符串对象 |
+  | REDIS_LIST| 列表对象 |     
+  | REDIS_HASH| 哈希对象 | 
+  | REDIS_SET| 集合对象 | 
+  | REDIS_ZSET| 有序集合对象 |
+  对于Redis保存的键值对来说，键总是字符串对象，而值可以是字符串对象，列表对象，哈希对象，集合对象，有序集合对象。
+  
++ 编码和底层实现
+
+  | 类型 | 编码 |对象|转码 |
+  | :----| :---- |:---- |:---- |
+  | REDIS_STRING| REDIS_ENCODING_INT |使用整数值实现的字符串对象 |执行APPEND 命令时，会先转码成RAW |
+  | REDIS_STRING| REDIS_ENCODING_EMBSTR |使用embstr编码的简单动态字符串实现的字符串对象 |字符串长度小于39字节，一次分配连续的内存空间，只读；修改时会转码成raw |
+  | REDIS_STRING| REDIS_ENCODING_RAW | 使用简单动态字符串实现的字符串对象 |:---- |    
+  | REDIS_LIST| REDIS_ENCODING_ZIPLIST |使用压缩列表实现的列表对象 |列表中所有字符串元素都小于64字节；元素数量不超过512个| 
+  | REDIS_LIST| REDIS_ENCODING_LINKEDLIST |使用双端链表实现的列表对象 |不满足ziplist两个条件的都会转码成双端链表 | 
+  | REDIS_HASH| REDIS_ENCODING_ZIPLIST |使用压缩列表实现的哈希对象 |列表中所有字符串元素都小于64字节；元素数量不超过512个 | 
+  | REDIS_HASH| REDIS_ENCODING_HT |使用字典实现的哈希对象 |不满足ziplist两个条件的都会转码成hashtable | 
+  | REDIS_SET| REDIS_ENCODING_INTSET | 使用整数集合实现的集合对象 |集合中所有元素都是整数值；数量不超过512个 |
+  | REDIS_SET| REDIS_ENCODING_HT | 使用字典实现的集合对象 |不满足整数集合的用hashtable |
+  | REDIS_ZSET| REDIS_ENCODING_ZIPLIST | 使用压缩列表实现的有序集合对象 |元素数量小于128个；所有元素长度小于64字节 |
+  | REDIS_ZSET|REDIS_ENCODING_SKIPLIST | 使用跳跃表和字典实现的有序集合对象 |不满足压缩列表条件的用skiplist |    
+  
+  
+  
+  
++ 内存回收
+
+      每个对象的引用计数由redisObject结构的refcount属性记录；
+   ```
+        typedef struct redisObject{
+            //...
+            //引用计数
+            int refcount;
+            //...
+        } robj;
+   ```      
+  创建对象时初始值是1，每次有新程序使用则加一，不再被一个程序使用时则减一，变为0时，对象所占用的内存会被释放掉。
+  
++ 对象共享
+    
+    对象的引用计数还带有对象共享的作用，即让数据库键的值指针指向同一个现有的值对象，并将其引用计数加一。Redis服务器初始化时，会创建一万个字符串对象，保存0-9999的整数值用来作为共享对象。
+    
++ 对象的空转时长
+    
+    redisObject还包含一个lru属性，该属性记录了对象最后一次被命令程序访问的时间，这个lru属性可以用来计算对象的空转时长
+      
+    
+               
